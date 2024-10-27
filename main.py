@@ -3,8 +3,10 @@ from dataclasses import dataclass
 import json
 import os
 import requests
+import time
 
-url = "https://api.europeia.dev/dispatch"
+dispatch_url = "https://api.europeia.dev/dispatch"
+queue_url = "https://api.europeia.dev/queue/dispatch/{}"
 
 
 @dataclass
@@ -46,13 +48,35 @@ def load_settings() -> Settings:
         subcategory=settings["subcategory"]
     )
 
+def check_job_completion(job_id: int, settings: Settings) -> bool:
+    headers = {
+        "Content-Type": "application/json",
+        "X-API-KEY": settings.api_key
+    }
+
+    job_completed = False
+
+    while not job_completed:
+        status = requests.post(queue_url.format(job_id), headers=headers).json()
+
+        match status["status"]:
+            case "queued":
+                time.sleep(5)
+                continue
+            case "success":
+                print(f"Dispatch posting success: https://www.nationstates.net/page=dispatch/id={status["dispatch_id"]}")
+                return True
+            case "failure":
+                print(f"Dispatch posting failure: {status["error"]}")
+                return False
+
 def upload_dispatch(filename: str, settings: Settings):
     headers = {
         "Content-Type": "application/json",
         "X-API-KEY": settings.api_key
     }
 
-    with open(filename, "r") as file_data:
+    with open(filename, "r", encoding="utf-8") as file_data:
         data = {
             "nation": settings.nation,
             "title": filename[:-4],
@@ -62,12 +86,13 @@ def upload_dispatch(filename: str, settings: Settings):
         }
 
     try:
-        dispatch_id = requests.post(url, headers=headers, json=data).json()["id"]
+        job_id = requests.post(dispatch_url, headers=headers, json=data).json()["id"]
     except Exception as e:
         print(f"Error: {e}")
     finally:
-        print(f"Uploaded {filename}: https://www.nationstates.net/page=dispatch/id={dispatch_id}")
-        os.remove(filename)
+        print(f"Job {job_id} started, polling for completion")
+        if check_job_completion(job_id, settings):
+            os.remove(filename)
 
 def main():
     settings = load_settings()
