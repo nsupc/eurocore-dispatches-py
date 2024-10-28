@@ -64,10 +64,10 @@ def check_job_completion(job_id: int, settings: Settings) -> bool:
                 time.sleep(5)
                 continue
             case "success":
-                print(f"Dispatch posting success: https://www.nationstates.net/page=dispatch/id={status["dispatch_id"]}")
+                print(f"Dispatch posting success: https://www.nationstates.net/page=dispatch/id={status['dispatch_id']}")
                 return True
             case "failure":
-                print(f"Dispatch posting failure: {status["error"]}")
+                print(f"Dispatch posting failure: {status['error']}")
                 return False
 
 def upload_dispatch(filename: str, settings: Settings):
