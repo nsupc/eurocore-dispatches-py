@@ -57,10 +57,11 @@ def check_job_completion(job_id: int, settings: Settings) -> bool:
     job_completed = False
 
     while not job_completed:
-        status = requests.post(queue_url.format(job_id), headers=headers).json()
+        status = requests.get(queue_url.format(job_id), headers=headers).json()
 
         match status["status"]:
             case "queued":
+                print("Job in progress")
                 time.sleep(5)
                 continue
             case "success":
@@ -89,7 +90,7 @@ def upload_dispatch(filename: str, settings: Settings):
         job_id = requests.post(dispatch_url, headers=headers, json=data).json()["id"]
     except Exception as e:
         print(f"Error: {e}")
-    finally:
+    else:
         print(f"Job {job_id} started, polling for completion")
         if check_job_completion(job_id, settings):
             os.remove(filename)
